@@ -1,19 +1,13 @@
 #include "newtonian-dynamics.hpp"
 
-#include <iostream>
-#include <cmath>
-#include <span>
-
-const double G = 0.000000000066743;
-
-void solve(std::span<particle*> particles, int method) {
+void solve(std::vector<particle*> particles, int method) {
     switch (method) {
         case 0:
             reset_forces(particles);
 
             for (size_t i = 0; i < particles.size(); i++) {
                 for (size_t j = i + 1; j < particles.size(); j++) {
-                    euler_method(particles[i], particles[j]);
+                    compute_gravity(particles[i], particles[j]);
                 }
                 std::cout << "X: " << particles[i]->x << ", Y: " << particles[i]->y << std::endl;
             }
@@ -39,9 +33,10 @@ void solve(std::span<particle*> particles, int method) {
 
             update_positions(particles);
 
+            reset_forces(particles);
             for (size_t i = 0; i < particles.size(); i++) {
                 for (size_t j = i + 1; j < particles.size(); j++) {
-                    euler_method(particles[i], particles[j]);
+                    compute_gravity(particles[i], particles[j]);
                 }
                 std::cout << "X: " << particles[i]->x << ", Y: " << particles[i]->y << std::endl;
             }
@@ -54,7 +49,7 @@ void solve(std::span<particle*> particles, int method) {
 int main() {
     std::cout << "START" << std::endl;
 
-    int method = 2;
+    int method = 0;
 
     particle* p1 = new particle{};
     particle* p2 = new particle{};
@@ -65,12 +60,12 @@ int main() {
     p2->x = 10.0;
     p2->Vy = 2.5;
 
-    particle *particles[2] = {p1, p2};
+    std::vector<particle*> particles = {p1, p2};
 
     if (method == 2) {
         for (size_t i = 0; i < std::size(particles); i++) {
                 for (size_t j = i + 1; j < std::size(particles); j++) {
-                    euler_method(particles[i], particles[j]);
+                    compute_gravity(particles[i], particles[j]);
                 }
                 std::cout << "X: " << particles[i]->x << ", Y: " << particles[i]->y << std::endl;
         }
