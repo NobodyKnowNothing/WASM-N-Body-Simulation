@@ -25,36 +25,6 @@ struct qtnode {
     }
 };
 
-inline void verlet(std::vector<particle*> particles, double dt = 1.0) {
-    update_velocities(particles, 0.5*dt);
-
-    update_positions(particles, dt);
-
-    qtnode* qtroot = init_qtroot(particles);
-
-    reset_forces(particles);
-    for (size_t i = 0; i < particles.size(); i++) {
-        traverse_tree(qtroot, particles[i], compute_gravity);
-        std::cout << "X: " << particles[i]->x << ", Y: " << particles[i]->y << std::endl;
-    }
-    
-    update_velocities(particles, 0.5*dt);
-
-    delete qtroot;
-}
-
-inline void setup_verlet(std::vector<particle*> particles){
-    qtnode* qtroot = init_qtroot(particles);
-
-    for (size_t i = 0; i < particles.size(); i++) {
-        traverse_tree(qtroot, particles[i], compute_gravity);
-    }
-}
-
-inline std::vector<particle*> init_particles() {
-    return std::vector<particle*>();
-}
-
 const double theta = 1;
 
 inline void traverse_tree(qtnode* current, particle* i, void (*method)(particle*, particle*)) {
@@ -65,7 +35,7 @@ inline void traverse_tree(qtnode* current, particle* i, void (*method)(particle*
         curr_part = current->particles[0];
         if (curr_part == i) return;
     }
-    double dist = particle_distance(i->x, i->y, current->CoMx, current->CoMy);
+    double dist = std::max(particle_distance(i->x, i->y, current->CoMx, current->CoMy), 0.0001);
     double len = current->length;
     if (!part_size && len/dist >= theta) {
         traverse_tree(current->NE, i, method);
@@ -78,7 +48,6 @@ inline void traverse_tree(qtnode* current, particle* i, void (*method)(particle*
     method(i, &j);
     if (part_size && dist < (i->radius + curr_part->radius)) {
         compute_collision(i, curr_part);
-        printf("epic");
     }
 }
 
@@ -242,6 +211,54 @@ inline qtnode* init_qtroot(std::vector<particle*> particles, int maxSize = 1) {
     qtnode* header = qtroot;
     qt_aux(header, maxSize);
     return qtroot;
+}
+
+inline void verlet(std::vector<particle*> particles, double dt = 1.0) {
+    update_velocities(particles, 0.5*dt);
+
+    update_positions(particles, dt);
+
+    qtnode* qtroot = init_qtroot(particles);
+
+    reset_forces(particles);
+    for (size_t i = 0; i < particles.size(); i++) {
+        traverse_tree(qtroot, particles[i], compute_gravity);
+    }
+    
+    update_velocities(particles, 0.5*dt);
+
+    delete qtroot;
+}
+
+inline void setup_verlet(std::vector<particle*> particles){
+    qtnode* qtroot = init_qtroot(particles);
+
+    for (size_t i = 0; i < particles.size(); i++) {
+        traverse_tree(qtroot, particles[i], compute_gravity);
+    }
+
+    delete qtroot;
+}
+
+inline double mean_vel(std::vector<particle*> particles) {
+    double totalVx = 0;
+    double totalVy = 0;
+
+    for (const particle *part: particles) {
+        totalVx += part->Vx;
+        totalVy += part->Vy;
+    }
+
+    return std::hypot(totalVx, totalVy)/particles.size();
+};
+
+inline double variance_vel(std::vector<particle*> particles) {
+    double mean = mean_vel(particles);
+    double mean_diff = 0;
+    for (const particle *part: particles) {
+        mean_diff += std::hypot(part->Vx, part->Vy) - mean;
+    }
+    return std::pow(mean_diff, 2) / particles.size();
 }
 
 #endif

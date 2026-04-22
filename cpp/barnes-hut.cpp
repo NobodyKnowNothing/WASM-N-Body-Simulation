@@ -1,7 +1,8 @@
 #include "barnes-hut.hpp"
 
+
 int main() {
-    std::vector<particle*> particles = init_particles();
+    std::vector<particle*> particles = {};
     add_particle(particles, 10, 0, 0, 0);
     add_particle(particles, -10, 0, 0, 0);
 
