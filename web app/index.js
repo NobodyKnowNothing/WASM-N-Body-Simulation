@@ -235,5 +235,6 @@ const sketch = (p) => {
         p.resizeCanvas(p.windowWidth, p.windowHeight);
     }
 }
-
-new p5(sketch);
+Module.onRuntimeInitialized = () => {
+    new p5(sketch);
+}

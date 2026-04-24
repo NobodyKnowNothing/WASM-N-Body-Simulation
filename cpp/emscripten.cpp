@@ -3,6 +3,8 @@
 
 std::vector<particle*> particles;
 
+
+
 extern "C" {
     EMSCRIPTEN_KEEPALIVE
     void add_particle_(double x, double y, double Vx, double Vy, double mass, double radius) {
@@ -28,9 +30,26 @@ extern "C" {
     }
 
     EMSCRIPTEN_KEEPALIVE
-    void verlet_(double dt) {
+    void verlet_(double dt, bool lyap = false) {
         if (particles.size() == 0) return;
+        if (lyap) {
+            const double epsilon = 1e-6;
+            std::vector<particle> particlez = particles;
+            for (const& particle part: particlez) {
+                part->x += epsilon;
+                part->y += epsilon;
+            }
+            verlet(particlez, dt);
+        }
         verlet(particles, dt);
+        if (lyap) {
+            int size = particles.size();
+            std::vector<std::vector<double>> deltaF(2, std::vector<double>(size, 0));
+            for (int i = 0; i < size; i++) {
+                deltaF.push_back({particlez->Fx - particles->Fx, particlez->Fy - particles->Fy});
+            }
+
+        }
     }
 
     EMSCRIPTEN_KEEPALIVE
