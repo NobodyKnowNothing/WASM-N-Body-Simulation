@@ -1,8 +1,13 @@
 #include "barnes-hut.hpp"
 #include <emscripten.h>
+#include <random>
 
 std::vector<particle*> particles;
-
+std::vector<particle*> particlez;
+std::vector<double> deltaF;
+int frame = 0;
+int lastFrame = 0;
+double lyap_sum = 0;
 
 
 extern "C" {
@@ -30,25 +35,46 @@ extern "C" {
     }
 
     EMSCRIPTEN_KEEPALIVE
-    void verlet_(double dt, bool lyap = false) {
+    void verlet_(double dt, bool lyap = false, int currFrame = 0) {
         if (particles.size() == 0) return;
+        const double epsilon = 1e-6;
         if (lyap) {
-            const double epsilon = 1e-6;
-            std::vector<particle> particlez = particles;
-            for (const& particle part: particlez) {
-                part->x += epsilon;
-                part->y += epsilon;
+            if (lastFrame == 0) {
+                double shift = epsilon/particles.size();
+
+                std::random_device rd;
+                std::mt19937 gen(rd());
+                for (auto *part: particlez) {
+                    std::uniform_real_distribution<double> dist(0.0, shift);
+                    double shiftDiff = dist(gen);
+                    part->x += shiftDiff;
+                    part->y += shift - shiftDiff;
+                }
+                lastFrame = currFrame;
             }
             verlet(particlez, dt);
         }
         verlet(particles, dt);
         if (lyap) {
             int size = particles.size();
-            std::vector<std::vector<double>> deltaF(2, std::vector<double>(size, 0));
-            for (int i = 0; i < size; i++) {
-                deltaF.push_back({particlez->Fx - particles->Fx, particlez->Fy - particles->Fy});
-            }
+            double dist_sq = 0;
+            if (currFrame % 15 == 0) {
+                for (int i = 0; i < size; i++) {
+                    double deltaFy = particlez[i]->Fy - particles[i]->Fy;
+                    double deltaFx = particlez[i]->Fx - particles[i]->Fx;
+                    dist_sq += deltaFx*deltaFx + deltaFy*deltaFy;
+                }
+                double current_dist = std::sqrt(dist_sq);
+                
+                lyap_sum += std::log(current_dist / epsilon);
 
+                particlez = particles;
+                double scale = epsilon / current_dist; 
+                for (int i = 0; i < size; i++) {
+                    particlez[i]->x = particles[i]->x + (particles[i]->x - particlez[i]->x)*scale;
+                    particlez[i]->y = particles[i]->y + (particles[i]->y - particlez[i]->y)*scale;
+                }
+            }
         }
     }
 
@@ -65,5 +91,10 @@ extern "C" {
     EMSCRIPTEN_KEEPALIVE
     double std_dev_vel_() {
         return std::sqrt(variance_vel(particles));
+    }
+
+    EMSCRIPTEN_KEEPALIVE
+    double get_lyap_sum_() {
+        return lyap_sum;
     }
 }

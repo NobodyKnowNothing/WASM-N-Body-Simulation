@@ -1132,6 +1132,24 @@ async function createWasm() {
       HEAPU32[((pnum)>>2)] = num;
       return 0;
     };
+
+  var initRandomFill = () => {
+      // This block is not needed on v19+ since crypto.getRandomValues is builtin
+      if (ENVIRONMENT_IS_NODE) {
+        var nodeCrypto = require('crypto');
+        return (view) => nodeCrypto.randomFillSync(view);
+      }
+  
+      return (view) => crypto.getRandomValues(view);
+    };
+  var randomFill = (view) => {
+      // Lazily init on the first invocation.
+      (randomFill = initRandomFill())(view);
+    };
+  var _random_get = (buffer, size) => {
+      randomFill(HEAPU8.subarray(buffer, buffer + size));
+      return 0;
+    };
 // End JS library code
 
 // include: postlibrary.js
@@ -1306,8 +1324,6 @@ Module['FS_createPreloadedFile'] = FS.createPreloadedFile;
   'checkWasiClock',
   'wasiRightsToMuslOFlags',
   'wasiOFlagsToMuslOFlags',
-  'initRandomFill',
-  'randomFill',
   'safeSetTimeout',
   'setImmediateWrapped',
   'safeRequestAnimationFrame',
@@ -1427,6 +1443,8 @@ missingLibrarySymbols.forEach(missingLibrarySymbol)
   'UNWIND_CACHE',
   'ExitStatus',
   'flush_NO_FILESYSTEM',
+  'initRandomFill',
+  'randomFill',
   'emSetImmediate',
   'emClearImmediate_deps',
   'emClearImmediate',
@@ -1607,6 +1625,7 @@ var _verlet_ = Module['_verlet_'] = makeInvalidEarlyAccess('_verlet_');
 var _mean_vel_ = Module['_mean_vel_'] = makeInvalidEarlyAccess('_mean_vel_');
 var _variance_vel_ = Module['_variance_vel_'] = makeInvalidEarlyAccess('_variance_vel_');
 var _std_dev_vel_ = Module['_std_dev_vel_'] = makeInvalidEarlyAccess('_std_dev_vel_');
+var _get_lyap_sum_ = Module['_get_lyap_sum_'] = makeInvalidEarlyAccess('_get_lyap_sum_');
 var _fflush = makeInvalidEarlyAccess('_fflush');
 var _strerror = makeInvalidEarlyAccess('_strerror');
 var _emscripten_stack_init = makeInvalidEarlyAccess('_emscripten_stack_init');
@@ -1629,6 +1648,7 @@ function assignWasmExports(wasmExports) {
   assert(typeof wasmExports['mean_vel_'] != 'undefined', 'missing Wasm export: mean_vel_');
   assert(typeof wasmExports['variance_vel_'] != 'undefined', 'missing Wasm export: variance_vel_');
   assert(typeof wasmExports['std_dev_vel_'] != 'undefined', 'missing Wasm export: std_dev_vel_');
+  assert(typeof wasmExports['get_lyap_sum_'] != 'undefined', 'missing Wasm export: get_lyap_sum_');
   assert(typeof wasmExports['fflush'] != 'undefined', 'missing Wasm export: fflush');
   assert(typeof wasmExports['strerror'] != 'undefined', 'missing Wasm export: strerror');
   assert(typeof wasmExports['emscripten_stack_init'] != 'undefined', 'missing Wasm export: emscripten_stack_init');
@@ -1644,10 +1664,11 @@ function assignWasmExports(wasmExports) {
   _particle_get_x_ = Module['_particle_get_x_'] = createExportWrapper('particle_get_x_', 1);
   _particle_get_y_ = Module['_particle_get_y_'] = createExportWrapper('particle_get_y_', 1);
   _setup_verlet_ = Module['_setup_verlet_'] = createExportWrapper('setup_verlet_', 1);
-  _verlet_ = Module['_verlet_'] = createExportWrapper('verlet_', 1);
+  _verlet_ = Module['_verlet_'] = createExportWrapper('verlet_', 3);
   _mean_vel_ = Module['_mean_vel_'] = createExportWrapper('mean_vel_', 0);
   _variance_vel_ = Module['_variance_vel_'] = createExportWrapper('variance_vel_', 0);
   _std_dev_vel_ = Module['_std_dev_vel_'] = createExportWrapper('std_dev_vel_', 0);
+  _get_lyap_sum_ = Module['_get_lyap_sum_'] = createExportWrapper('get_lyap_sum_', 0);
   _fflush = createExportWrapper('fflush', 1);
   _strerror = createExportWrapper('strerror', 1);
   _emscripten_stack_init = wasmExports['emscripten_stack_init'];
@@ -1673,7 +1694,9 @@ var wasmImports = {
   /** @export */
   fd_seek: _fd_seek,
   /** @export */
-  fd_write: _fd_write
+  fd_write: _fd_write,
+  /** @export */
+  random_get: _random_get
 };
 
 

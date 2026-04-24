@@ -203,6 +203,21 @@ const sketch = (p) => {
         }
     }
 
+    p.touchStarted = (event) => {
+        if (event.target.tagName === 'CANVAS') {
+            mx = p.touches[0].x;
+            my = p.touches[0].y;
+        }
+    }
+
+    p.touchEnded = (event) => {
+        if (event.target.tagName === 'CANVAS' && p.mouseButton === p.LEFT) {
+            let Vx = (mx - p.touches[0].x) / zoom;
+            let Vy = (my - p.touches[0].y) / zoom;
+            new particle(100000000000000, 10, (p.mouseX - offsetX) / zoom, (p.mouseY - offsetY) / zoom, Vx, Vy);
+        }
+    }
+
     p.drawGrid = () => {
         p.stroke(200);
         p.strokeWeight(1 / zoom);
