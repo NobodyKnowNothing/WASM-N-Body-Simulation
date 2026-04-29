@@ -3,6 +3,7 @@
 
 
 #include <algorithm>
+#include <random>
 #include "newtonian-dynamics.hpp"
 
 struct qtnode {
@@ -46,11 +47,30 @@ inline void traverse_tree(qtnode* current, particle* i, void (*method)(particle*
     }
     particle j{.x = current->CoMx, .y = current->CoMy, .mass = current->totalMass};
     method(i, &j);
-    if (part_size && dist < (i->radius + curr_part->radius)) {
-        compute_collision(i, curr_part);
-    }
+
 }
 
+inline void traverse_tree_collisions(qtnode* current, particle* i, std::vector<std::pair<particle*, particle*>>& cols) {
+    if (current == nullptr) return;
+    bool part_size = (current->particles.size() == 1);
+    particle* curr_part;
+    if (part_size) {
+        curr_part = current->particles[0];
+        if (curr_part == i) return;
+    }
+    double dist = std::max(particle_distance(i->x, i->y, current->CoMx, current->CoMy), 0.0001);
+    double len = current->length;
+    if (!part_size && len/dist >= theta) {
+        traverse_tree_collisions(current->NE, i, cols);
+        traverse_tree_collisions(current->NW, i, cols);
+        traverse_tree_collisions(current->SW, i, cols);
+        traverse_tree_collisions(current->SE, i, cols);
+        return;
+    }
+    if (part_size && dist < (i->radius + curr_part->radius) && i > curr_part) {
+        cols.push_back({i, curr_part});
+    }
+}
 
 inline void qt_aux(qtnode* header, int maxSize) {
     std::vector<particle*> subsets[4];
@@ -221,11 +241,61 @@ inline void verlet(std::vector<particle*> particles, double dt = 1.0) {
     qtnode* qtroot = init_qtroot(particles);
 
     reset_forces(particles);
+
     for (size_t i = 0; i < particles.size(); i++) {
         traverse_tree(qtroot, particles[i], compute_gravity);
     }
-    
+
     update_velocities(particles, 0.5*dt);
+
+    std::vector<std::pair<particle*, particle*>> cols;
+
+    for (size_t i = 0; i < particles.size(); i++) {
+        traverse_tree_collisions(qtroot, particles[i], cols);
+    }
+    
+
+    int iterations = 10;
+
+    std::random_device rd;
+    std::mt19937 g(rd());
+
+    std::vector<std::vector<double>> epic;
+
+    for (int j = 0; j < cols.size(); j++) {
+        epic.push_back(compute_collision(cols[j].first, cols[j].second, j));
+    }
+
+    for (int i = 0; i < iterations; i++) {
+        std::shuffle(epic.begin(), epic.end(), g);
+        for (int j = 0; j < epic.size(); j++) {
+            int k = epic[j][0];
+            std::vector<double> n = normal(cols[k].first, cols[k].second);
+            if (((cols[k].first->Vx-cols[k].second->Vx)*n[0] + (cols[k].first->Vy-cols[k].second->Vy)*n[1]) >= 0)
+            cols[k].first->Vx += epic[j][1]/iterations;
+            cols[k].first->Vy += epic[j][2]/iterations;
+
+            cols[k].second->Vx -= epic[j][3]/iterations;
+            cols[k].second->Vy -= epic[j][4]/iterations;
+
+
+            cols[k].first->x += epic[j][5]/iterations;
+            cols[k].first->y += epic[j][6]/iterations;
+
+            cols[k].second->x -= epic[j][7]/iterations;
+            cols[k].second->y -= epic[j][8]/iterations;
+        }
+    }
+
+    /* for (int i = 0; i < cols_average.size(); i += 5) {
+        if (cols_average[i] > 0) {
+            particles[i/5]->Vx += cols_average[i+1]/cols_average[i];
+            particles[i/5]->Vy += cols_average[i+2]/cols_average[i];
+            particles[i/5]->x += cols_average[i+3]/cols_average[i];
+            particles[i/5]->y += cols_average[i+4]/cols_average[i];
+        }
+    } */
+    
 
     delete qtroot;
 }

@@ -120,25 +120,17 @@ inline double impulse_scalar(particle* i, particle* j, std::vector<double> n, do
     return j1*(x*n[0] + y*n[1]);
 }
 
-inline void compute_collision(particle* i, particle* k) {
+inline std::vector<double> compute_collision(particle* i, particle* k, const double col) {
     std::vector<double> n = normal(i, k);
-    if (((i->Vx-k->Vx)*n[0] + (i->Vy-k->Vy)*n[1]) >= 0) return;
-    double j = impulse_scalar(i, k, n);
-    std::vector<double> n1 = {n[0]*j, n[1]*j};
-
-    i->Vx += n1[0]/i->mass;
-    i->Vy += n1[1]/i->mass;
-
-    k->Vx -= n1[0]/k->mass;
-    k->Vy -= n1[1]/k->mass;
-
     double overlap = (i->radius + k->radius) - dist_mag(i, k);
 
-    i->x += n[0]*overlap/2;
-    i->y += n[1]*overlap/2;
+    double j = impulse_scalar(i, k, n);
+    std::vector<double> n1 = {n[0]*j, n[1]*j};
+    
+    double kradshare = i->radius/(i->radius+k->radius);
+    double iradshare = k->radius/(i->radius+k->radius);
 
-    k->x -= n[0]*overlap/2;
-    k->y -= n[1]*overlap/2;
+    return {col, n1[0]/i->mass, n1[1]/i->mass, n1[0]/k->mass, n1[1]/k->mass, n[0]*overlap*iradshare, n[1]*overlap*iradshare, n[0]*overlap*kradshare, n[1]*overlap*kradshare};
 }
 
 
