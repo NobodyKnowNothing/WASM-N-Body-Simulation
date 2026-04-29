@@ -205,16 +205,25 @@ const sketch = (p) => {
 
     p.touchStarted = (event) => {
         if (event.target.tagName === 'CANVAS') {
-            mx = p.touches[0].x;
-            my = p.touches[0].y;
+            tx = p.touches[0].x;
+            ty = p.touches[0].y;
+            tx1 = tx;
+            ty1 = ty;
+        }
+    }
+
+    p.touchMoved = (event) => {
+        if (event.target.tagName === 'CANVAS') {
+            tx1 = p.touches[0].x;
+            ty1 = p.touches[0].y;
         }
     }
 
     p.touchEnded = (event) => {
-        if (event.target.tagName === 'CANVAS' && p.mouseButton === p.LEFT) {
-            let Vx = (mx - p.touches[0].x) / zoom;
-            let Vy = (my - p.touches[0].y) / zoom;
-            new particle(100000000000000, 10, (p.mouseX - offsetX) / zoom, (p.mouseY - offsetY) / zoom, Vx, Vy);
+        if (event.target.tagName === 'CANVAS') {
+            let Vx = (tx - tx1) / zoom;
+            let Vy = (ty - ty1) / zoom;
+            new particle(100000000000000, 10, (tx1 - offsetX) / zoom, (ty1 - offsetY) / zoom, Vx, Vy);
         }
     }
 
