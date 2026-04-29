@@ -107,7 +107,7 @@ const sketch = (p) => {
             statsDiv = p.createDiv('');
             statsDiv.position(p.windowWidth * 0.03, p.windowHeight * 0.06);
             statsDiv.id('chart-container1')
-            statsDiv.size(p.windowWidth * 0.4, p.windowHeight * 0.3);
+            statsDiv.size(p.windowWidth * 0.6, p.windowHeight * 0.3);
             initGraph1();
             statsPlotBool = true;
             statsButton.style('border-style', 'inset');
