@@ -97,4 +97,20 @@ extern "C" {
     double get_lyap_sum_() {
         return lyap_sum;
     }
+
+    EMSCRIPTEN_KEEPALIVE
+    void reset_() {
+        for (particle* part: particles) {
+            delete part;
+        }
+        for (particle* part: particlez) {
+            delete part;
+        }
+        particles = {};
+        particlez = {};
+        deltaF = {};
+        frame = 0;
+        lastFrame = 0;
+        lyap_sum = 0;
+    }
 }

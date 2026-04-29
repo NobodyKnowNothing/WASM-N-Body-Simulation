@@ -1,5 +1,3 @@
-
-
 function initGraph1() {
     let trace1 = {
         x: [],
@@ -124,6 +122,10 @@ const sketch = (p) => {
         }
     }
 
+    p.reset = () => {
+        particles = [];
+        Module._reset_();
+    }
 
     p.setup = () => {
         p.createCanvas(p.windowWidth, p.windowHeight);
@@ -133,6 +135,12 @@ const sketch = (p) => {
         statsButton.mousePressed(p.statsPlot);
         statsButton.style('appearance', 'none');
         statsButton.style('-webkit-appearance', 'none'); // Needed for Safari/Chrome
+
+        resetButton = p.createButton('Reset');
+        resetButton.position(p.windowWidth * 0.03, p.windowHeight * 0.95);
+        resetButton.mousePressed(p.reset);
+        resetButton.style('appearance', 'none');
+        resetButton.style('-webkit-appearance', 'none'); // Needed for Safari/Chrome
 
         offsetX = p.width / 2;
         offsetY = p.height / 2;
@@ -205,17 +213,26 @@ const sketch = (p) => {
 
     p.touchStarted = (event) => {
         if (event.target.tagName === 'CANVAS') {
-            tx = p.touches[0].x;
-            ty = p.touches[0].y;
-            tx1 = tx;
-            ty1 = ty;
+            if (p.touches.length == 1) {
+                tx = p.touches[0].x;
+                ty = p.touches[0].y;
+                tx1 = tx;
+                ty1 = ty;
+            }
         }
     }
 
     p.touchMoved = (event) => {
         if (event.target.tagName === 'CANVAS') {
-            tx1 = p.touches[0].x;
-            ty1 = p.touches[0].y;
+            if (p.touches.length == 1) {
+                tx1 = p.touches[0].x;
+                ty1 = p.touches[0].y;
+            } /* else {
+                offsetX += ((p.touches[0].x + p.touches[1].x) / 2) - tx1;
+                offsetY += ((p.touches[0].x + p.touches[1].x) / 2) - ty1;
+                tx1 = (p.touches[0].x + p.touches[1].x) / 2;
+                ty1 = (p.touches[0].y + p.touches[1].y) / 2;
+            } */
         }
     }
 

@@ -1626,6 +1626,7 @@ var _mean_vel_ = Module['_mean_vel_'] = makeInvalidEarlyAccess('_mean_vel_');
 var _variance_vel_ = Module['_variance_vel_'] = makeInvalidEarlyAccess('_variance_vel_');
 var _std_dev_vel_ = Module['_std_dev_vel_'] = makeInvalidEarlyAccess('_std_dev_vel_');
 var _get_lyap_sum_ = Module['_get_lyap_sum_'] = makeInvalidEarlyAccess('_get_lyap_sum_');
+var _reset_ = Module['_reset_'] = makeInvalidEarlyAccess('_reset_');
 var _fflush = makeInvalidEarlyAccess('_fflush');
 var _strerror = makeInvalidEarlyAccess('_strerror');
 var _emscripten_stack_init = makeInvalidEarlyAccess('_emscripten_stack_init');
@@ -1649,6 +1650,7 @@ function assignWasmExports(wasmExports) {
   assert(typeof wasmExports['variance_vel_'] != 'undefined', 'missing Wasm export: variance_vel_');
   assert(typeof wasmExports['std_dev_vel_'] != 'undefined', 'missing Wasm export: std_dev_vel_');
   assert(typeof wasmExports['get_lyap_sum_'] != 'undefined', 'missing Wasm export: get_lyap_sum_');
+  assert(typeof wasmExports['reset_'] != 'undefined', 'missing Wasm export: reset_');
   assert(typeof wasmExports['fflush'] != 'undefined', 'missing Wasm export: fflush');
   assert(typeof wasmExports['strerror'] != 'undefined', 'missing Wasm export: strerror');
   assert(typeof wasmExports['emscripten_stack_init'] != 'undefined', 'missing Wasm export: emscripten_stack_init');
@@ -1669,6 +1671,7 @@ function assignWasmExports(wasmExports) {
   _variance_vel_ = Module['_variance_vel_'] = createExportWrapper('variance_vel_', 0);
   _std_dev_vel_ = Module['_std_dev_vel_'] = createExportWrapper('std_dev_vel_', 0);
   _get_lyap_sum_ = Module['_get_lyap_sum_'] = createExportWrapper('get_lyap_sum_', 0);
+  _reset_ = Module['_reset_'] = createExportWrapper('reset_', 0);
   _fflush = createExportWrapper('fflush', 1);
   _strerror = createExportWrapper('strerror', 1);
   _emscripten_stack_init = wasmExports['emscripten_stack_init'];
