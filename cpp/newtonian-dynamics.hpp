@@ -113,7 +113,7 @@ inline std::vector<double> normal(particle* i, particle* j) {
     
 }
 
-const double BST = 0.05; // baumgarte stabalization term 
+const double BST = 0.05; // baumgarte stabilization term 
 const double slop = 0.05;
 
 inline double impulse_scalar(particle* i, particle* j, const std::vector<double> n, const double dt, const double overlap, const double e = 1) {
