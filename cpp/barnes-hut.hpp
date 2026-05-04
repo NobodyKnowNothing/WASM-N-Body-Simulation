@@ -302,7 +302,7 @@ inline void verlet(std::vector<particle*> particles, double dt = 1.0, const int 
                 
             }
         }
-
+        delete qtroot;
         qtroot = init_qtroot(particles);
     }
 

@@ -23,7 +23,7 @@ extern const double G = 0.000000000066743;
 double pot_en_sum = 0;
 
 inline double particle_distance(const double x1, const double y1, const double x2, const double y2) {
-    return std::sqrt(std::pow(x1-x2, 2) + std::pow(y1-y2, 2));
+    return std::max(std::sqrt(std::pow(x1-x2, 2) + std::pow(y1-y2, 2)), 0.01);
 }
 
 inline double gravity_force(const double mass1, const double mass2, const double pos1, const double pos2, const double distance) {
