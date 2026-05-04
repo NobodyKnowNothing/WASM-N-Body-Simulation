@@ -66,7 +66,7 @@ const sketch = (p) => {
     let offsetX = 0;
     let offsetY = 0;
 
-    let dt = 0.1
+    let dt = 0.01
 
     let particles = [];
 
@@ -158,8 +158,9 @@ const sketch = (p) => {
         p.drawGrid();
         p.fill(255, 100, 100);
         p.rectMode(p.CENTER);
-
-        Module._verlet_(dt);
+        for (let i = 0; i < (1 / p.frameRate() * 1 / dt * 10); i++) {
+            Module._verlet_(dt);
+        }
         particles.forEach(part => {
             part.draw();
             part.update();

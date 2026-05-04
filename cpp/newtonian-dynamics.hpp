@@ -60,7 +60,7 @@ inline void update_positions(std::vector<particle*> particles, double step_modif
 }
 
 inline void compute_gravity(particle *j, particle *k) {
-    double r = particle_distance(j->x, j->y, k->x, k->y);
+    double r = std::max(particle_distance(j->x, j->y, k->x, k->y), j->radius + k->radius);
 
     double Fx = gravity_force(j->mass, k->mass, j->x, k->x, r);
     double Fy = gravity_force(j->mass, k->mass, j->y, k->y, r);
@@ -113,32 +113,27 @@ inline std::vector<double> normal(particle* i, particle* j) {
     
 }
 
-inline double impulse_scalar(particle* i, particle* j, std::vector<double> n, double e = 1.0) {
-    double j1 = -(1 + e)/(1/i->mass + 1/j->mass);
+const double BST = 0.05; // baumgarte stabilization term 
+const double slop = 0.05;
+
+inline double impulse_scalar(particle* i, particle* j, const std::vector<double> n, const double dt, const double overlap, const double e = 1) {
     double x = i->Vx - j->Vx;
     double y = i->Vy - j->Vy;
-    return j1*(x*n[0] + y*n[1]);
+    return (-(1 + e)*(x*n[0] + y*n[1]) + (std::max(overlap - slop, 0.0))*BST/dt)/(1/i->mass + 1/j->mass);
 }
 
-inline void compute_collision(particle* i, particle* k) {
+
+inline std::vector<double> compute_collision(particle* i, particle* k, const double col, const double dt) {
     std::vector<double> n = normal(i, k);
-    if (((i->Vx-k->Vx)*n[0] + (i->Vy-k->Vy)*n[1]) >= 0) return;
-    double j = impulse_scalar(i, k, n);
-    std::vector<double> n1 = {n[0]*j, n[1]*j};
-
-    i->Vx += n1[0]/i->mass;
-    i->Vy += n1[1]/i->mass;
-
-    k->Vx -= n1[0]/k->mass;
-    k->Vy -= n1[1]/k->mass;
-
     double overlap = (i->radius + k->radius) - dist_mag(i, k);
 
-    i->x += n[0]*overlap/2;
-    i->y += n[1]*overlap/2;
+    double j = impulse_scalar(i, k, n, dt, overlap);
+    std::vector<double> n1 = {n[0]*j, n[1]*j};
+    
+    double kradshare = i->mass/(i->mass+k->mass);
+    double iradshare = k->mass/(i->mass+k->mass);
 
-    k->x -= n[0]*overlap/2;
-    k->y -= n[1]*overlap/2;
+    return {col, n1[0]/i->mass, n1[1]/i->mass, n1[0]/k->mass, n1[1]/k->mass, 0, 0, 0, 0};
 }
 
 
