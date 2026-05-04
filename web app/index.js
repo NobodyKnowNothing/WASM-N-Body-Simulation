@@ -55,6 +55,30 @@ function initGraph1() {
     Plotly.newPlot('chart-container1', [trace1, trace2, trace3], layout, { responsive: true, displayModeBar: false });
 }
 
+function initGraph2() {
+    let trace1 = {
+        x: [],
+        y: [],
+        mode: 'lines',
+        line: { color: 'red', width: 2 },
+    };
+
+    let layout = {
+        title: { text: 'Total System Energy (Hamiltonian, Joules)' },
+        xaxis: { title: { text: 'Frames rendered' } },
+        yaxis: {
+            title: { text: 'Energy' },
+            autorange: true, // Let it scale automatically at first
+            x: 1.1
+        },
+        hovermode: false,
+        margin: { t: 40, b: 40, l: 90, r: 30 }
+    };
+
+    Plotly.newPlot('chart-container2', [trace1], layout, { responsive: true, displayModeBar: false });
+}
+
+
 const sketch = (p) => {
     let zoom = 1.00;
     let zMin = 0.05;
@@ -71,6 +95,7 @@ const sketch = (p) => {
     let particles = [];
 
     let statsDiv = null;
+    let hamDiv = null
     let statsButton = null;
     let statsPlotBool = false;
 
@@ -106,15 +131,26 @@ const sketch = (p) => {
         if (!statsPlotBool) {
             statsDiv = p.createDiv('');
             statsDiv.position(p.windowWidth * 0.03, p.windowHeight * 0.06);
-            statsDiv.id('chart-container1')
+            statsDiv.id('chart-container1');
             statsDiv.size(p.windowWidth * 0.6, p.windowHeight * 0.3);
             initGraph1();
+
+            hamDiv = p.createDiv('');
+            hamDiv.position(p.windowWidth * 0.03, p.windowHeight * 0.36);
+            hamDiv.id('chart-container2');
+            hamDiv.size(p.windowWidth * 0.4, p.windowHeight * 0.2);
+            initGraph2();
+
             statsPlotBool = true;
             statsButton.style('border-style', 'inset');
             statsButton.style('background-color', '#7a7a7aff');
         } else {
             statsDiv.remove();
             statsDiv = null;
+
+            hamDiv.remove();
+            hamDiv = null;
+
             statsPlotBool = false;
             statsButton.style('border-style', 'outset');
             statsButton.style('background-color', '#ffffffbb');
@@ -166,11 +202,15 @@ const sketch = (p) => {
             part.update();
         });
         if (document.getElementById('chart-container1')) {
-            console.log(Module._mean_vel_(), Module._variance_vel_(), Module._std_dev_vel_());
             Plotly.extendTraces('chart-container1', {
                 y: [[Module._mean_vel_()], [Module._variance_vel_()], [Module._std_dev_vel_()]],
                 x: [[p.frameCount], [p.frameCount], [p.frameCount]]
             }, [0, 1, 2], 300);
+
+            Plotly.extendTraces('chart-container2', {
+                y: [[Module._get_ham_sum_()]],
+                x: [[p.frameCount]]
+            }, [0], 1000);
         }
 
         p.pop();

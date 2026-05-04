@@ -47,7 +47,7 @@ inline void traverse_tree(qtnode* current, particle* i, void (*method)(particle*
     }
     particle j{.x = current->CoMx, .y = current->CoMy, .mass = current->totalMass, };
     method(i, &j);
-
+    pot_en_sum += pot_grav_en(i->mass, j.mass, dist);
 }
 
 inline void traverse_tree_collisions(qtnode* current, particle* i, std::vector<std::pair<particle*, particle*>>& cols) {
@@ -234,6 +234,7 @@ inline qtnode* init_qtroot(std::vector<particle*> particles, int maxSize = 1) {
 }
 
 inline void verlet(std::vector<particle*> particles, double dt = 1.0, const int collision_mode = 0) {
+    pot_en_sum = 0;
     update_velocities(particles, 0.5*dt);
 
     update_positions(particles, dt);
@@ -353,6 +354,15 @@ inline double variance_vel(std::vector<particle*> particles) {
         mean_diff += std::hypot(part->Vx, part->Vy) - mean;
     }
     return std::pow(mean_diff, 2) / particles.size();
+}
+
+
+inline double ken_en_sum(std::vector<particle*> particles) {
+    double ken_energy_sum = 0;
+    for (const particle *part: particles) {
+        ken_energy_sum += 0.5*part->mass*std::pow(std::hypot(part->Vx, part->Vy), 2); 
+    }
+    return ken_energy_sum;
 }
 
 #endif

@@ -97,6 +97,11 @@ extern "C" {
     double get_lyap_sum_() {
         return lyap_sum;
     }
+    
+    EMSCRIPTEN_KEEPALIVE
+    double get_ham_sum_() {
+        return ken_en_sum(particles) + 0.5*pot_en_sum;
+    }
 
     EMSCRIPTEN_KEEPALIVE
     void reset_() {

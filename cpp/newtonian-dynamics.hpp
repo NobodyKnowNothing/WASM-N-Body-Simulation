@@ -20,13 +20,20 @@ struct particle {
 // Global Constants
 extern const double G = 0.000000000066743;
 
-inline double particle_distance(double x1, double y1, double x2, double y2) {
+double pot_en_sum = 0;
+
+inline double particle_distance(const double x1, const double y1, const double x2, const double y2) {
     return std::sqrt(std::pow(x1-x2, 2) + std::pow(y1-y2, 2));
 }
 
-inline double gravity_force(double mass1, double mass2, double pos1, double pos2, double distance) {
+inline double gravity_force(const double mass1, const double mass2, const double pos1, const double pos2, const double distance) {
     if (distance == 0.0) return 0.0;
     return -1*G*mass1*mass2*(pos1-pos2)/std::pow(distance, 3); // Teach yourself how this was derived
+}
+
+inline double pot_grav_en(const double mass1, const double mass2, const double dist) {
+    if (dist == 0.0) return 0.0;
+    return -1*G*mass1*mass2/dist;
 }
 
 inline void reset_forces(std::vector<particle*> particles) {
