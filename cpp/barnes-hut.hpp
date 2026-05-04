@@ -36,7 +36,7 @@ inline void traverse_tree(qtnode* current, particle* i, void (*method)(particle*
         curr_part = current->particles[0];
         if (curr_part == i) return;
     }
-    double dist = std::max(particle_distance(i->x, i->y, current->CoMx, current->CoMy), 0.0001);
+    double dist = std::max(particle_distance(i->x, i->y, current->CoMx, current->CoMy), 0.01);
     double len = current->length;
     if (!part_size && len/dist >= theta) {
         traverse_tree(current->NE, i, method);
@@ -45,7 +45,7 @@ inline void traverse_tree(qtnode* current, particle* i, void (*method)(particle*
         traverse_tree(current->SE, i, method);
         return;
     }
-    particle j{.x = current->CoMx, .y = current->CoMy, .mass = current->totalMass};
+    particle j{.x = current->CoMx, .y = current->CoMy, .mass = current->totalMass, };
     method(i, &j);
 
 }
@@ -58,7 +58,7 @@ inline void traverse_tree_collisions(qtnode* current, particle* i, std::vector<s
         curr_part = current->particles[0];
         if (curr_part == i) return;
     }
-    double dist = std::max(particle_distance(i->x, i->y, current->CoMx, current->CoMy), 0.0001);
+    double dist = std::max(particle_distance(i->x, i->y, current->CoMx, current->CoMy), 0.01);
     double len = current->length;
     if (!part_size && len/dist >= theta) {
         traverse_tree_collisions(current->NE, i, cols);
@@ -233,59 +233,83 @@ inline qtnode* init_qtroot(std::vector<particle*> particles, int maxSize = 1) {
     return qtroot;
 }
 
-inline void verlet(std::vector<particle*> particles, double dt = 1.0) {
+inline void verlet(std::vector<particle*> particles, double dt = 1.0, const int collision_mode = 0) {
     update_velocities(particles, 0.5*dt);
 
     update_positions(particles, dt);
 
+    reset_forces(particles);
+
     qtnode* qtroot = init_qtroot(particles);
 
-    reset_forces(particles);
+    std::vector<std::pair<particle*, particle*>> cols;
+    
+    for (int i = 0; i < particles.size(); i++) {
+        traverse_tree_collisions(qtroot, particles[i], cols);
+    }
+
+    if (cols.size() > 0) {
+
+        std::random_device rd;
+        std::mt19937 g(rd());
+
+        std::shuffle(cols.begin(), cols.end(), g);
+        for (int j = 0; j < cols.size(); j++) {
+            particle* i = cols[j].first;
+            particle* k = cols[j].second;
+            double overlap = (i->radius + k->radius) - dist_mag(cols[j].first, cols[j].second);
+            if (overlap > 0) {
+
+                std::vector<double> n = normal(cols[j].first, cols[j].second);
+                switch (collision_mode) {
+                    case 0: {
+                        double stiffness = 100;
+
+                        double mass_radio = (i->mass * k->mass) / (i->mass + k->mass);
+
+                        double k_spring = stiffness * mass_radio;
+
+                        double damping = 0.0;
+
+                        double vel_rel = (cols[j].first->Vx-cols[j].second->Vx)*n[0] + (cols[j].first->Vy-cols[j].second->Vy)*n[1];
+
+                        double force_scalar = (k_spring * overlap) - (damping * vel_rel);
+
+                        cols[j].first->Fx += force_scalar*n[0];
+                        cols[j].first->Fy += force_scalar*n[1];
+
+                        cols[j].second->Fx -= force_scalar*n[0];
+                        cols[j].second->Fy -= force_scalar*n[1];
+                        break;
+                    }
+                    case 1: {
+                        std::vector<double> col = compute_collision(cols[j].first, cols[j].second, j, dt);
+
+                        cols[j].first->x += col[5];
+                        cols[j].first->y += col[6];
+                        cols[j].second->x -= col[7];
+                        cols[j].second->y -= col[8];
+                        if (((cols[j].first->Vx-cols[j].second->Vx)*n[0] + (cols[j].first->Vy-cols[j].second->Vy)*n[1]) < 0) {
+                            cols[j].first->Vx += col[1];
+                            cols[j].first->Vy += col[2];
+                            cols[j].second->Vx -= col[3];
+                            cols[j].second->Vy -= col[4];
+                        }
+                        break;
+                    }
+                }
+                
+            }
+        }
+
+        qtroot = init_qtroot(particles);
+    }
 
     for (size_t i = 0; i < particles.size(); i++) {
         traverse_tree(qtroot, particles[i], compute_gravity);
     }
 
     update_velocities(particles, 0.5*dt);
-
-    std::vector<std::pair<particle*, particle*>> cols;
-
-    for (size_t i = 0; i < particles.size(); i++) {
-        traverse_tree_collisions(qtroot, particles[i], cols);
-    }
-    
-
-    int iterations = 10;
-
-    std::random_device rd;
-    std::mt19937 g(rd());
-
-    std::vector<std::vector<double>> epic;
-
-    for (int j = 0; j < cols.size(); j++) {
-        epic.push_back(compute_collision(cols[j].first, cols[j].second, j));
-    }
-
-    for (int i = 0; i < iterations; i++) {
-        std::shuffle(epic.begin(), epic.end(), g);
-        for (int j = 0; j < epic.size(); j++) {
-            int k = epic[j][0];
-            std::vector<double> n = normal(cols[k].first, cols[k].second);
-            if (((cols[k].first->Vx-cols[k].second->Vx)*n[0] + (cols[k].first->Vy-cols[k].second->Vy)*n[1]) >= 0)
-            cols[k].first->Vx += epic[j][1]/iterations;
-            cols[k].first->Vy += epic[j][2]/iterations;
-
-            cols[k].second->Vx -= epic[j][3]/iterations;
-            cols[k].second->Vy -= epic[j][4]/iterations;
-
-
-            cols[k].first->x += epic[j][5]/iterations;
-            cols[k].first->y += epic[j][6]/iterations;
-
-            cols[k].second->x -= epic[j][7]/iterations;
-            cols[k].second->y -= epic[j][8]/iterations;
-        }
-    }
 
     /* for (int i = 0; i < cols_average.size(); i += 5) {
         if (cols_average[i] > 0) {

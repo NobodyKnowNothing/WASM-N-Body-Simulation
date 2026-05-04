@@ -60,7 +60,7 @@ inline void update_positions(std::vector<particle*> particles, double step_modif
 }
 
 inline void compute_gravity(particle *j, particle *k) {
-    double r = particle_distance(j->x, j->y, k->x, k->y);
+    double r = std::max(particle_distance(j->x, j->y, k->x, k->y), j->radius + k->radius);
 
     double Fx = gravity_force(j->mass, k->mass, j->x, k->x, r);
     double Fy = gravity_force(j->mass, k->mass, j->y, k->y, r);
@@ -113,24 +113,27 @@ inline std::vector<double> normal(particle* i, particle* j) {
     
 }
 
-inline double impulse_scalar(particle* i, particle* j, std::vector<double> n, double e = 1.0) {
-    double j1 = -(1 + e)/(1/i->mass + 1/j->mass);
+const double BST = 0.05; // baumgarte stabalization term 
+const double slop = 0.05;
+
+inline double impulse_scalar(particle* i, particle* j, const std::vector<double> n, const double dt, const double overlap, const double e = 1) {
     double x = i->Vx - j->Vx;
     double y = i->Vy - j->Vy;
-    return j1*(x*n[0] + y*n[1]);
+    return (-(1 + e)*(x*n[0] + y*n[1]) + (std::max(overlap - slop, 0.0))*BST/dt)/(1/i->mass + 1/j->mass);
 }
 
-inline std::vector<double> compute_collision(particle* i, particle* k, const double col) {
+
+inline std::vector<double> compute_collision(particle* i, particle* k, const double col, const double dt) {
     std::vector<double> n = normal(i, k);
     double overlap = (i->radius + k->radius) - dist_mag(i, k);
 
-    double j = impulse_scalar(i, k, n);
+    double j = impulse_scalar(i, k, n, dt, overlap);
     std::vector<double> n1 = {n[0]*j, n[1]*j};
     
-    double kradshare = i->radius/(i->radius+k->radius);
-    double iradshare = k->radius/(i->radius+k->radius);
+    double kradshare = i->mass/(i->mass+k->mass);
+    double iradshare = k->mass/(i->mass+k->mass);
 
-    return {col, n1[0]/i->mass, n1[1]/i->mass, n1[0]/k->mass, n1[1]/k->mass, n[0]*overlap*iradshare, n[1]*overlap*iradshare, n[0]*overlap*kradshare, n[1]*overlap*kradshare};
+    return {col, n1[0]/i->mass, n1[1]/i->mass, n1[0]/k->mass, n1[1]/k->mass, 0, 0, 0, 0};
 }
 
 
