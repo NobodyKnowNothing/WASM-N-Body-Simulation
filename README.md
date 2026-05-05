@@ -1,6 +1,7 @@
 **WORK IN PROGRESS**
 
 *KNOWN ISSUES:*
-- issues with energy conservation
-  - adds angular velocity when 3 or more bodies are clustered and touching together
-  - adds positional velocity when 2 or more bodies are clustered and touching together
+- issues with conservation of momentum/energy
+  - centre of mass of a system will not stay the same due to:
+    - small compounding errors
+    - inherenent violation of conservation of energy when adding a body to the system
