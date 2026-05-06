@@ -5,10 +5,9 @@
 std::vector<particle*> particles;
 std::vector<particle*> particlez;
 std::vector<double> deltaF;
-int frame = 0;
-int lastFrame = 0;
+int step = 0;
 double lyap_sum = 0;
-
+double DT = 0;
 
 extern "C" {
     EMSCRIPTEN_KEEPALIVE
@@ -35,22 +34,26 @@ extern "C" {
     }
 
     EMSCRIPTEN_KEEPALIVE
-    void verlet_(double dt, bool lyap = false, int currFrame = 0) {
+    void verlet_(double dt, bool lyap = false) {
         if (particles.size() == 0) return;
+        DT = dt; 
         const double epsilon = 1e-6;
         if (lyap) {
-            if (lastFrame == 0) {
-                double shift = epsilon/particles.size();
+            for (int i = particlez.size(); i < particles.size(); i++) {
+                particlez.push_back(new particle(*particles[i]));
+            }
+            if (step == 0) {
+                double shift = epsilon*epsilon/particles.size();
 
                 std::random_device rd;
                 std::mt19937 gen(rd());
+                std::uniform_real_distribution<double> dist(0.0, shift);
+                std::uniform_int_distribution<int> coin(0, 1);
                 for (auto *part: particlez) {
-                    std::uniform_real_distribution<double> dist(0.0, shift);
                     double shiftDiff = dist(gen);
-                    part->x += shiftDiff;
-                    part->y += shift - shiftDiff;
+                    part->x += coin(gen) ? std::sqrt(shiftDiff) : -std::sqrt(shiftDiff);
+                    part->y += coin(gen) ? std::sqrt(shift - shiftDiff) : -std::sqrt(shift - shiftDiff);
                 }
-                lastFrame = currFrame;
             }
             verlet(particlez, dt);
         }
@@ -58,23 +61,28 @@ extern "C" {
         if (lyap) {
             int size = particles.size();
             double dist_sq = 0;
-            if (currFrame % 15 == 0) {
+            if (step % 20 == 0) {
                 for (int i = 0; i < size; i++) {
-                    double deltaFy = particlez[i]->Fy - particles[i]->Fy;
-                    double deltaFx = particlez[i]->Fx - particles[i]->Fx;
-                    dist_sq += deltaFx*deltaFx + deltaFy*deltaFy;
+                    double deltay = particles[i]->y - particlez[i]->y;
+                    double deltax = particles[i]->x - particlez[i]->x;
+                    
+                    double deltaVy = particles[i]->Vy - particlez[i]->Vy;
+                    double deltaVx = particles[i]->Vx - particlez[i]->Vx;
+                    dist_sq += deltax*deltax + deltay*deltay + deltaVx*deltaVx + deltaVy*deltaVy;
                 }
                 double current_dist = std::sqrt(dist_sq);
                 
                 lyap_sum += std::log(current_dist / epsilon);
-
-                particlez = particles;
                 double scale = epsilon / current_dist; 
                 for (int i = 0; i < size; i++) {
-                    particlez[i]->x = particles[i]->x + (particles[i]->x - particlez[i]->x)*scale;
-                    particlez[i]->y = particles[i]->y + (particles[i]->y - particlez[i]->y)*scale;
+                    particlez[i]->x = particles[i]->x + (particlez[i]->x - particles[i]->x)*scale;
+                    particlez[i]->y = particles[i]->y + (particlez[i]->y - particles[i]->y)*scale;
+                    
+                    particlez[i]->Vx = particles[i]->Vx + (particlez[i]->Vx - particles[i]->Vx)*scale;
+                    particlez[i]->Vy = particles[i]->Vy + (particlez[i]->Vy - particles[i]->Vy)*scale;
                 }
             }
+            step += 1;
         }
     }
 
@@ -94,8 +102,8 @@ extern "C" {
     }
 
     EMSCRIPTEN_KEEPALIVE
-    double get_lyap_sum_() {
-        return lyap_sum;
+    double get_lyap_expo_() {
+        return lyap_sum / (step * DT);
     }
     
     EMSCRIPTEN_KEEPALIVE
@@ -114,8 +122,7 @@ extern "C" {
         particles = {};
         particlez = {};
         deltaF = {};
-        frame = 0;
-        lastFrame = 0;
         lyap_sum = 0;
+        step = 0;
     }
 }

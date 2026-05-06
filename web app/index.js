@@ -34,7 +34,8 @@ function initGraph1() {
         xaxis: { title: { text: 'Frames rendered' } },
         yaxis: {
             title: { text: 'Mean' },
-            autorange: true // Let it scale automatically at first
+            autorange: true, // Let it scale automatically at first
+            tickformat: '~.3e'
         },
         yaxis2: {
             title: { text: 'Variance' },
@@ -72,12 +73,56 @@ function initGraph2() {
             x: 1.1
         },
         hovermode: false,
-        margin: { t: 40, b: 40, l: 90, r: 30 }
+        margin: { t: 40, b: 70, l: 90, r: 30 },
+        annotations: [{
+            text: "Adding a body inherently changes the energy of a system, ",
+            xref: 'paper',
+            yref: 'paper',
+            x: 0.5,       // Centered horizontally (0 is left, 1 is right)
+            y: -0.72,     // Pushed below the x-axis
+            showarrow: false,
+            font: { size: 11, color: 'gray' },
+            xanchor: 'center',
+            yanchor: 'top'
+        }]
     };
 
     Plotly.newPlot('chart-container2', [trace1], layout, { responsive: true, displayModeBar: false });
 }
 
+function initGraph3() {
+    let trace1 = {
+        x: [],
+        y: [],
+        mode: 'lines',
+        line: { color: 'red', width: 2 },
+    };
+
+    let layout = {
+        title: { text: 'Chaos Measure (Lyapunov Exponent)' },
+        xaxis: { title: { text: 'Frames rendered' } },
+        yaxis: {
+            title: { text: 'Lyap.' },
+            autorange: true,
+            x: 1.1
+        },
+        hovermode: false,
+        margin: { t: 40, b: 70, l: 90, r: 30 },
+        annotations: [{
+            text: "Collisions add chaos unrelated to gravity. Stable is <= 0, Chaos is > 0.",
+            xref: 'paper',
+            yref: 'paper',
+            x: 0.5,
+            y: -0.72,
+            showarrow: false,
+            font: { size: 11, color: 'gray' },
+            xanchor: 'center',
+            yanchor: 'top'
+        }]
+    };
+
+    Plotly.newPlot('chart-container3', [trace1], layout, { responsive: true, displayModeBar: false });
+}
 
 const sketch = (p) => {
     let zoom = 1.00;
@@ -141,6 +186,12 @@ const sketch = (p) => {
             hamDiv.size(p.windowWidth * 0.4, p.windowHeight * 0.2);
             initGraph2();
 
+            lyapDiv = p.createDiv('');
+            lyapDiv.position(p.windowWidth * 0.03, p.windowHeight * 0.56);
+            lyapDiv.id('chart-container3');
+            lyapDiv.size(p.windowWidth * 0.4, p.windowHeight * 0.2);
+            initGraph3();
+
             statsPlotBool = true;
             statsButton.style('border-style', 'inset');
             statsButton.style('background-color', '#7a7a7aff');
@@ -150,6 +201,9 @@ const sketch = (p) => {
 
             hamDiv.remove();
             hamDiv = null;
+
+            lyapDiv.remove();
+            lyapDiv = null;
 
             statsPlotBool = false;
             statsButton.style('border-style', 'outset');
@@ -195,7 +249,7 @@ const sketch = (p) => {
         p.fill(255, 100, 100);
         p.rectMode(p.CENTER);
         for (let i = 0; i < (1 / p.frameRate() * 1 / dt * 10); i++) {
-            Module._verlet_(dt);
+            Module._verlet_(dt, statsPlotBool);
         }
         particles.forEach(part => {
             part.draw();
@@ -209,6 +263,11 @@ const sketch = (p) => {
 
             Plotly.extendTraces('chart-container2', {
                 y: [[Module._get_ham_sum_()]],
+                x: [[p.frameCount]]
+            }, [0], 1000);
+
+            Plotly.extendTraces('chart-container3', {
+                y: [[Module._get_lyap_expo_()]],
                 x: [[p.frameCount]]
             }, [0], 1000);
         }

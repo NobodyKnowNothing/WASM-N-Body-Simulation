@@ -36,7 +36,7 @@ inline void traverse_tree(qtnode* current, particle* i, void (*method)(particle*
         curr_part = current->particles[0];
         if (curr_part == i) return;
     }
-    double dist = std::max(particle_distance(i->x, i->y, current->CoMx, current->CoMy), 0.01);
+    double dist = std::max(particle_distance(i->x, i->y, current->CoMx, current->CoMy), i->radius);
     double len = current->length;
     if (!part_size && len/dist >= theta) {
         traverse_tree(current->NE, i, method);
@@ -351,9 +351,9 @@ inline double variance_vel(std::vector<particle*> particles) {
     double mean = mean_vel(particles);
     double mean_diff = 0;
     for (const particle *part: particles) {
-        mean_diff += std::hypot(part->Vx, part->Vy) - mean;
+        mean_diff += std::pow(std::hypot(part->Vx, part->Vy) - mean, 2);
     }
-    return std::pow(mean_diff, 2) / particles.size();
+    return mean_diff / particles.size();
 }
 
 
