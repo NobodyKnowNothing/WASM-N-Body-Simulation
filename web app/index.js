@@ -79,7 +79,7 @@ function initGraph2() {
             xref: 'paper',
             yref: 'paper',
             x: 0.5,       // Centered horizontally (0 is left, 1 is right)
-            y: -0.72,     // Pushed below the x-axis
+            y: -0.70,     // Pushed below the x-axis
             showarrow: false,
             font: { size: 11, color: 'gray' },
             xanchor: 'center',
@@ -113,7 +113,7 @@ function initGraph3() {
             xref: 'paper',
             yref: 'paper',
             x: 0.5,
-            y: -0.72,
+            y: -0.70,
             showarrow: false,
             font: { size: 11, color: 'gray' },
             xanchor: 'center',
