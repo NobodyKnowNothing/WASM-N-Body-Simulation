@@ -75,7 +75,7 @@ function initGraph2() {
         hovermode: false,
         margin: { t: 40, b: 70, l: 90, r: 30 },
         annotations: [{
-            text: "Adding a body inherently changes the energy of a system, ",
+            text: "Adding a body inherently changes the energy of a system.",
             xref: 'paper',
             yref: 'paper',
             x: 0.5,       // Centered horizontally (0 is left, 1 is right)
