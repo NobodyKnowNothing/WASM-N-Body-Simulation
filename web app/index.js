@@ -157,9 +157,9 @@ const sketch = (p) => {
             Module._setup_verlet_(this.index);
         }
 
-        update() {
-            this.x = Module._particle_get_x_(this.index);
-            this.y = Module._particle_get_y_(this.index);
+        update(x, y) {
+            this.x = x;
+            this.y = y;
         }
 
         draw() {
@@ -251,23 +251,26 @@ const sketch = (p) => {
         for (let i = 0; i < (1 / p.frameRate() * 1 / dt * 10); i++) {
             Module._verlet_(dt, statsPlotBool);
         }
+
+        const pos_array = new Float64Array(HEAPF64.buffer, Module._get_particle_positions_(), particles.length * 2)
         particles.forEach(part => {
             part.draw();
-            part.update();
+            part.update(pos_array[part.index*2], pos_array[part.index*2+1]);
         });
         if (document.getElementById('chart-container1')) {
+            const stats_array = new Float64Array(HEAPF64.buffer, Module._get_simulation_stats_(), 5)
             Plotly.extendTraces('chart-container1', {
-                y: [[Module._mean_vel_()], [Module._variance_vel_()], [Module._std_dev_vel_()]],
+                y: [[stats_array[0]], [stats_array[1]], [stats_array[2]]],
                 x: [[p.frameCount], [p.frameCount], [p.frameCount]]
             }, [0, 1, 2], 300);
 
             Plotly.extendTraces('chart-container2', {
-                y: [[Module._get_ham_sum_()]],
+                y: [[stats_array[4]]],
                 x: [[p.frameCount]]
             }, [0], 1000);
 
             Plotly.extendTraces('chart-container3', {
-                y: [[Module._get_lyap_expo_()]],
+                y: [[stats_array[3]]],
                 x: [[p.frameCount]]
             }, [0], 1000);
         }

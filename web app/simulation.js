@@ -986,83 +986,14 @@ async function createWasm() {
   var __abort_js = () =>
       abort('native code called abort()');
 
-  var getHeapMax = () =>
-      // Stay one Wasm page short of 4GB: while e.g. Chrome is able to allocate
-      // full 4GB Wasm memories, the size will wrap back to 0 bytes in Wasm side
-      // for any code that deals with heap sizes, which would require special
-      // casing all heap size related code to treat 0 specially.
-      2147483648;
-  
-  var alignMemory = (size, alignment) => {
-      assert(alignment, "alignment argument is required");
-      return Math.ceil(size / alignment) * alignment;
-    };
-  
-  var growMemory = (size) => {
-      var oldHeapSize = wasmMemory.buffer.byteLength;
-      var pages = ((size - oldHeapSize + 65535) / 65536) | 0;
-      try {
-        // round size grow request up to wasm page size (fixed 64KB per spec)
-        wasmMemory.grow(pages); // .grow() takes a delta compared to the previous size
-        updateMemoryViews();
-        return 1 /*success*/;
-      } catch(e) {
-        err(`growMemory: Attempted to grow heap from ${oldHeapSize} bytes to ${size} bytes, but got error: ${e}`);
-      }
-      // implicit 0 return to save code size (caller will cast "undefined" into 0
-      // anyhow)
+  var abortOnCannotGrowMemory = (requestedSize) => {
+      abort(`Cannot enlarge memory arrays to size ${requestedSize} bytes (OOM). Either (1) compile with -sINITIAL_MEMORY=X with X higher than the current value ${HEAP8.length}, (2) compile with -sALLOW_MEMORY_GROWTH which allows increasing the size at runtime, or (3) if you want malloc to return NULL (0) instead of this abort, compile with -sABORTING_MALLOC=0`);
     };
   var _emscripten_resize_heap = (requestedSize) => {
       var oldSize = HEAPU8.length;
       // With CAN_ADDRESS_2GB or MEMORY64, pointers are already unsigned.
       requestedSize >>>= 0;
-      // With multithreaded builds, races can happen (another thread might increase the size
-      // in between), so return a failure, and let the caller retry.
-      assert(requestedSize > oldSize);
-  
-      // Memory resize rules:
-      // 1.  Always increase heap size to at least the requested size, rounded up
-      //     to next page multiple.
-      // 2a. If MEMORY_GROWTH_LINEAR_STEP == -1, excessively resize the heap
-      //     geometrically: increase the heap size according to
-      //     MEMORY_GROWTH_GEOMETRIC_STEP factor (default +20%), At most
-      //     overreserve by MEMORY_GROWTH_GEOMETRIC_CAP bytes (default 96MB).
-      // 2b. If MEMORY_GROWTH_LINEAR_STEP != -1, excessively resize the heap
-      //     linearly: increase the heap size by at least
-      //     MEMORY_GROWTH_LINEAR_STEP bytes.
-      // 3.  Max size for the heap is capped at 2048MB-WASM_PAGE_SIZE, or by
-      //     MAXIMUM_MEMORY, or by ASAN limit, depending on which is smallest
-      // 4.  If we were unable to allocate as much memory, it may be due to
-      //     over-eager decision to excessively reserve due to (3) above.
-      //     Hence if an allocation fails, cut down on the amount of excess
-      //     growth, in an attempt to succeed to perform a smaller allocation.
-  
-      // A limit is set for how much we can grow. We should not exceed that
-      // (the wasm binary specifies it, so if we tried, we'd fail anyhow).
-      var maxHeapSize = getHeapMax();
-      if (requestedSize > maxHeapSize) {
-        err(`Cannot enlarge memory, requested ${requestedSize} bytes, but the limit is ${maxHeapSize} bytes!`);
-        return false;
-      }
-  
-      // Loop through potential heap size increases. If we attempt a too eager
-      // reservation that fails, cut down on the attempted size and reserve a
-      // smaller bump instead. (max 3 times, chosen somewhat arbitrarily)
-      for (var cutDown = 1; cutDown <= 4; cutDown *= 2) {
-        var overGrownHeapSize = oldSize * (1 + 0.2 / cutDown); // ensure geometric growth
-        // but limit overreserving (default to capping at +96MB overgrowth at most)
-        overGrownHeapSize = Math.min(overGrownHeapSize, requestedSize + 100663296 );
-  
-        var newSize = Math.min(maxHeapSize, alignMemory(Math.max(requestedSize, overGrownHeapSize), 65536));
-  
-        var replacement = growMemory(newSize);
-        if (replacement) {
-  
-          return true;
-        }
-      }
-      err(`Failed to grow the heap from ${oldSize} bytes to ${newSize} bytes, not enough memory!`);
-      return false;
+      abortOnCannotGrowMemory(requestedSize);
     };
 
   var UTF8Decoder = globalThis.TextDecoder && new TextDecoder();
@@ -1286,6 +1217,8 @@ Module['FS_createPreloadedFile'] = FS.createPreloadedFile;
   'createNamedFunction',
   'zeroMemory',
   'exitJS',
+  'getHeapMax',
+  'growMemory',
   'withStackSave',
   'strError',
   'inetPton4',
@@ -1308,6 +1241,7 @@ Module['FS_createPreloadedFile'] = FS.createPreloadedFile;
   'maybeExit',
   'asyncLoad',
   'asmjsMangle',
+  'alignMemory',
   'mmapAlloc',
   'HandleAllocator',
   'getUniqueRunDependency',
@@ -1475,8 +1409,7 @@ missingLibrarySymbols.forEach(missingLibrarySymbol)
   'stackSave',
   'stackRestore',
   'ptrToString',
-  'getHeapMax',
-  'growMemory',
+  'abortOnCannotGrowMemory',
   'ENV',
   'ERRNO_CODES',
   'DNS',
@@ -1485,7 +1418,6 @@ missingLibrarySymbols.forEach(missingLibrarySymbol)
   'timers',
   'warnOnce',
   'readEmAsmArgsArray',
-  'alignMemory',
   'wasmTable',
   'wasmMemory',
   'noExitRuntime',
@@ -1686,10 +1618,13 @@ function checkIncomingModuleAPI() {
 
 // Imports from the Wasm binary.
 var _add_particle_ = Module['_add_particle_'] = makeInvalidEarlyAccess('_add_particle_');
+var _get_particle_positions_ = Module['_get_particle_positions_'] = makeInvalidEarlyAccess('_get_particle_positions_');
+var _get_particle_count_ = Module['_get_particle_count_'] = makeInvalidEarlyAccess('_get_particle_count_');
 var _particle_get_x_ = Module['_particle_get_x_'] = makeInvalidEarlyAccess('_particle_get_x_');
 var _particle_get_y_ = Module['_particle_get_y_'] = makeInvalidEarlyAccess('_particle_get_y_');
 var _setup_verlet_ = Module['_setup_verlet_'] = makeInvalidEarlyAccess('_setup_verlet_');
 var _verlet_ = Module['_verlet_'] = makeInvalidEarlyAccess('_verlet_');
+var _get_simulation_stats_ = Module['_get_simulation_stats_'] = makeInvalidEarlyAccess('_get_simulation_stats_');
 var _mean_vel_ = Module['_mean_vel_'] = makeInvalidEarlyAccess('_mean_vel_');
 var _variance_vel_ = Module['_variance_vel_'] = makeInvalidEarlyAccess('_variance_vel_');
 var _std_dev_vel_ = Module['_std_dev_vel_'] = makeInvalidEarlyAccess('_std_dev_vel_');
@@ -1711,10 +1646,13 @@ var wasmMemory = makeInvalidEarlyAccess('wasmMemory');
 
 function assignWasmExports(wasmExports) {
   assert(typeof wasmExports['add_particle_'] != 'undefined', 'missing Wasm export: add_particle_');
+  assert(typeof wasmExports['get_particle_positions_'] != 'undefined', 'missing Wasm export: get_particle_positions_');
+  assert(typeof wasmExports['get_particle_count_'] != 'undefined', 'missing Wasm export: get_particle_count_');
   assert(typeof wasmExports['particle_get_x_'] != 'undefined', 'missing Wasm export: particle_get_x_');
   assert(typeof wasmExports['particle_get_y_'] != 'undefined', 'missing Wasm export: particle_get_y_');
   assert(typeof wasmExports['setup_verlet_'] != 'undefined', 'missing Wasm export: setup_verlet_');
   assert(typeof wasmExports['verlet_'] != 'undefined', 'missing Wasm export: verlet_');
+  assert(typeof wasmExports['get_simulation_stats_'] != 'undefined', 'missing Wasm export: get_simulation_stats_');
   assert(typeof wasmExports['mean_vel_'] != 'undefined', 'missing Wasm export: mean_vel_');
   assert(typeof wasmExports['variance_vel_'] != 'undefined', 'missing Wasm export: variance_vel_');
   assert(typeof wasmExports['std_dev_vel_'] != 'undefined', 'missing Wasm export: std_dev_vel_');
@@ -1733,10 +1671,13 @@ function assignWasmExports(wasmExports) {
   assert(typeof wasmExports['memory'] != 'undefined', 'missing Wasm export: memory');
   assert(typeof wasmExports['__indirect_function_table'] != 'undefined', 'missing Wasm export: __indirect_function_table');
   _add_particle_ = Module['_add_particle_'] = createExportWrapper('add_particle_', 6);
+  _get_particle_positions_ = Module['_get_particle_positions_'] = createExportWrapper('get_particle_positions_', 0);
+  _get_particle_count_ = Module['_get_particle_count_'] = createExportWrapper('get_particle_count_', 0);
   _particle_get_x_ = Module['_particle_get_x_'] = createExportWrapper('particle_get_x_', 1);
   _particle_get_y_ = Module['_particle_get_y_'] = createExportWrapper('particle_get_y_', 1);
   _setup_verlet_ = Module['_setup_verlet_'] = createExportWrapper('setup_verlet_', 1);
   _verlet_ = Module['_verlet_'] = createExportWrapper('verlet_', 2);
+  _get_simulation_stats_ = Module['_get_simulation_stats_'] = createExportWrapper('get_simulation_stats_', 0);
   _mean_vel_ = Module['_mean_vel_'] = createExportWrapper('mean_vel_', 0);
   _variance_vel_ = Module['_variance_vel_'] = createExportWrapper('variance_vel_', 0);
   _std_dev_vel_ = Module['_std_dev_vel_'] = createExportWrapper('std_dev_vel_', 0);

@@ -4,6 +4,11 @@
 
 std::vector<particle*> particles;
 std::vector<particle*> particlez;
+
+std::vector<double> particle_pos; // pos buffer
+
+double stats_buffer[5];
+
 std::vector<double> deltaF;
 int step = 0;
 double lyap_sum = 0;
@@ -13,6 +18,24 @@ extern "C" {
     EMSCRIPTEN_KEEPALIVE
     void add_particle_(double x, double y, double Vx, double Vy, double mass, double radius) {
         add_particle(particles, x, y, Vx, Vy, 0, 0, mass, radius);
+    }
+
+    EMSCRIPTEN_KEEPALIVE
+    double* get_particle_positions_() {
+        particle_pos.clear();
+        particle_pos.reserve(particles.size() * 2);
+
+        for (auto *index: particles) {
+            particle_pos.push_back(index->x);
+            particle_pos.push_back(index->y);
+        }
+
+        return particle_pos.data();
+    }
+
+    EMSCRIPTEN_KEEPALIVE
+    int get_particle_count_() {
+        return particle_pos.size();
     }
 
     EMSCRIPTEN_KEEPALIVE
@@ -84,6 +107,17 @@ extern "C" {
             }
             step += 1;
         }
+    }
+
+    EMSCRIPTEN_KEEPALIVE
+    double* get_simulation_stats_() {
+        stats_buffer[0] = mean_vel(particles);
+        stats_buffer[1] = variance_vel(particles);
+        stats_buffer[2] = std::sqrt(stats_buffer[1]);
+        stats_buffer[3] = (step > 0 && DT > 0) ? (lyap_sum / (step * DT)) : 0;
+        stats_buffer[4] = ken_en_sum(particles) + 0.5 * pot_en_sum;
+
+        return stats_buffer;
     }
 
     EMSCRIPTEN_KEEPALIVE
