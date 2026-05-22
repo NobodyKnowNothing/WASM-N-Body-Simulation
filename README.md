@@ -5,4 +5,5 @@
   - centre of mass of a system will not stay the same due to:
     - small compounding errors
     - inherenent violation of conservation of energy when adding a body to the system
-- optimization, because of memory passthrough issues between WASM and js and just the live and local computation there is issues with performance with the graphs 
+- optimization
+  - because of memory passthrough issues between WASM and js and just the live and local computation there is issues with performance with the graphs 
