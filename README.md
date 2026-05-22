@@ -6,4 +6,4 @@
     - small compounding errors
     - inherenent violation of conservation of energy when adding a body to the system
 - optimization
-  - because of memory passthrough issues between WASM and js and just the live and local computation there is issues with performance with the graphs 
+  - because of memory passthrough issues between WASM and js and just the live and local computation there is issues with performance in the optional graphs
